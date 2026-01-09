@@ -1,0 +1,6 @@
+input,expected_output
+"Can you help me with my code?","Not ambiguous - clear request for help"
+"Show me the data","Ambiguous - which data? database table or report?"
+"What should I do today?","Ambiguous - missing context about available options"
+"Generate a report for Q3","Not ambiguous - clear task definition"
+"Fix the issue","Ambiguous - which issue? unclear what needs to be fixed"
