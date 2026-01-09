@@ -24,6 +24,25 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Detect Python from conda environment
+PYTHON_CMD="python3"
+if [ -n "$CONDA_PREFIX" ]; then
+    # Running in a conda environment
+    PYTHON_CMD="$CONDA_PREFIX/bin/python"
+    if [ ! -f "$PYTHON_CMD" ]; then
+        # Fallback for Windows conda environments
+        PYTHON_CMD="$CONDA_PREFIX/python.exe"
+    fi
+elif [ -n "$CONDA_DEFAULT_ENV" ]; then
+    # Conda is active but try to locate it
+    if command -v conda &> /dev/null; then
+        CONDA_PREFIX=$(conda info --json | grep -o '"conda_prefix": "[^"]*' | cut -d'"' -f4)
+        if [ -n "$CONDA_PREFIX" ] && [ -f "$CONDA_PREFIX/bin/python" ]; then
+            PYTHON_CMD="$CONDA_PREFIX/bin/python"
+        fi
+    fi
+fi
+
 echo -e "${GREEN}========================================${NC}" | tee -a "$LOG_FILE"
 echo -e "${GREEN}LLM Benchmark Runner - Automated${NC}" | tee -a "$LOG_FILE"
 echo -e "${GREEN}========================================${NC}" | tee -a "$LOG_FILE"
@@ -38,16 +57,17 @@ if [ ! -f "$MODELS_FILE" ]; then
 fi
 
 # Check Python
-if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}ERROR: Python3 not found${NC}" | tee -a "$LOG_FILE"
+if ! command -v "$PYTHON_CMD" &> /dev/null && [ ! -f "$PYTHON_CMD" ]; then
+    echo -e "${RED}ERROR: Python not found at: $PYTHON_CMD${NC}" | tee -a "$LOG_FILE"
+    echo -e "${YELLOW}Please activate a conda environment and try again${NC}" | tee -a "$LOG_FILE"
     exit 1
 fi
 
-echo -e "${GREEN}✓ Python3 found${NC}" | tee -a "$LOG_FILE"
+echo -e "${GREEN}✓ Python found: $PYTHON_CMD${NC}" | tee -a "$LOG_FILE"
 
 # Check dependencies
 echo "Checking dependencies..." | tee -a "$LOG_FILE"
-python3 -c "import torch, transformers, pandas" 2>/dev/null && \
+"$PYTHON_CMD" -c "import torch, transformers, pandas" 2>/dev/null && \
     echo -e "${GREEN}✓ All dependencies available${NC}" | tee -a "$LOG_FILE" || \
     { echo -e "${YELLOW}Installing dependencies...${NC}" | tee -a "$LOG_FILE"; pip install -r requirements.txt 2>&1 | tee -a "$LOG_FILE"; }
 
@@ -80,7 +100,7 @@ for model in "${MODELS[@]}"; do
     echo -e "${BLUE}[$CURRENT_MODEL/$TOTAL_MODELS] Benchmarking: $model${NC}" | tee -a "$LOG_FILE"
     echo -e "${BLUE}========================================${NC}" | tee -a "$LOG_FILE"
     
-    python3 "$SCRIPT_DIR/run_benchmark.py" --model "$model" 2>&1 | tee -a "$LOG_FILE"
+    "$PYTHON_CMD" "$SCRIPT_DIR/run_benchmark.py" --model "$model" 2>&1 | tee -a "$LOG_FILE"
     
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         echo -e "${RED}✗ Failed for $model${NC}" | tee -a "$LOG_FILE"
