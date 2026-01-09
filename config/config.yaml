@@ -1,0 +1,81 @@
+also# LLM Benchmarker Configuration - Transformers/HuggingFace Models
+
+# LLM Model Settings - Using Transformers/HuggingFace
+llm:
+  type: "transformers"  # Options: transformers (download and use from HuggingFace)
+  framework: "transformers"  # HuggingFace transformers library
+  model_name: "meta-llama/Llama-2-7b"  # HuggingFace model ID
+  model_type: "causal_lm"  # Options: causal_lm, seq2seq, etc.
+  cache_dir: "./models"  # Directory to cache downloaded models
+  auto_cleanup: true  # Automatically delete models after benchmarking
+  device: "cuda"  # Options: cuda, cpu
+  precision: "float16"  # Options: float32, float16, bfloat16
+  temperature: 0.0
+  max_tokens: 2048
+  num_beams: 1  # For beam search generation
+  top_p: 0.95
+  top_k: 50
+
+# Model Download Settings
+model_download:
+  enabled: true
+  huggingface_token: null  # Set via environment variable HF_TOKEN or here
+  max_retries: 3
+  timeout: 300  # seconds for download timeout
+  cleanup_after_use: true  # Delete model files after benchmark completes
+  cleanup_pattern: "*.bin"  # Patterns to clean up
+
+# Security Settings
+security:
+  enable_sql_injection_detection: true
+  enable_prompt_injection_detection: true
+  enable_data_exposure_checks: true
+  enable_audit_logging: true
+  audit_log_path: "logs/"
+
+# Benchmark Settings
+benchmarks:
+  nl_to_sql:
+    enabled: true
+    timeout: 30
+    max_retries: 3
+    security_checks: true
+    metrics:
+      - exact_match
+      - execution_accuracy
+      - syntax_correctness
+      - security_compliance
+      - llm_gen_time
+      - avg_attempts
+      - avg_query_latency
+      - avg_rows_read
+      - avg_data_read
+      - exactness
+      - efficiency
+      - score
+  
+  ambiguity_intent:
+    enabled: true
+    timeout: 30
+    max_retries: 3
+    security_checks: true
+    metrics:
+      - ambiguity_detection_rate
+      - intent_accuracy
+      - clarification_quality
+      - security_alert_rate
+
+# Evaluation Settings
+evaluation:
+  sample_size: null  # null = all samples
+  seed: 42
+  save_intermediate_results: true
+  verbose: true
+  security_focused: true  # Enable security-focused evaluation
+
+# Output Settings
+output:
+  results_dir: "results"
+  format: "json"  # Options: json, csv, html
+  include_timestamps: true
+  include_security_report: true
