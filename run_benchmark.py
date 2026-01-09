@@ -243,17 +243,18 @@ def run_benchmark(models: List[str], tasks: List[str], test_data_dir: str = "tes
 
 
 if __name__ == "__main__":
-    # Configure models and tasks
-    MODELS = [
-        "meta-llama/Llama-2-7b",
-        # "microsoft/phi-2",
-    ]
+    import argparse
     
-    TASKS = [
-        "nl_to_sql",
-        "ambiguity_intent",
-    ]
+    parser = argparse.ArgumentParser(description="LLM Benchmark Runner")
+    parser.add_argument("--model", type=str, required=True, help="HuggingFace model ID to benchmark")
+    parser.add_argument("--tasks", type=str, default="nl_to_sql,ambiguity_intent", help="Comma-separated list of tasks")
+    parser.add_argument("--test-data-dir", type=str, default="test_data", help="Directory with test CSV files")
+    args = parser.parse_args()
     
-    TEST_DATA_DIR = "test_data"
+    # Parse tasks
+    TASKS = [t.strip() for t in args.tasks.split(",")]
+    TEST_DATA_DIR = args.test_data_dir
+    MODELS = [args.model]
     
     run_benchmark(MODELS, TASKS, TEST_DATA_DIR)
+

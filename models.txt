@@ -1,0 +1,9 @@
+# List of models to benchmark
+# One model per line (HuggingFace model IDs)
+# Examples:
+# meta-llama/Llama-2-7b
+# meta-llama/Llama-2-13b
+# microsoft/phi-2
+# google/flan-t5-base
+
+meta-llama/Llama-2-7b
