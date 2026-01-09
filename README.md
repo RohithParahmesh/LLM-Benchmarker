@@ -8,43 +8,6 @@ A comprehensive benchmarking and security testing suite for evaluating locally-h
 
 This repository contains tools and frameworks to systematically benchmark and evaluate **offline, locally-downloaded LLMs** for both functional accuracy and security purposes. The benchmarks download models via **HuggingFace Transformers**, test them comprehensively, and automatically clean up afterward. Each benchmark can be run independently to test specific capabilities without relying on external APIs or cloud-based services.
 
-## Project Structure
-
-```
-LLM-Benchmarker/
-├── README.md
-├── requirements.txt
-├── config/
-│   ├── config.yaml
-│   └── benchmark_config.json
-├── benchmarks/
-│   ├── nl_to_sql/
-│   │   ├── README.md
-│   │   ├── data/
-│   │   │   ├── test_cases.json
-│   │   │   └── expected_outputs.json
-│   │   ├── scripts/
-│   │   │   ├── run_benchmark.py
-│   │   │   ├── evaluate.py
-│   │   │   └── utils.py
-│   │   └── results/
-│   │       └── .gitkeep
-│   ├── ambiguity_intent/
-│   │   ├── README.md
-│   │   ├── data/
-│   │   │   ├── test_cases.json
-│   │   │   └── expected_outputs.json
-│   │   ├── scripts/
-│   │   │   ├── run_benchmark.py
-│   │   │   ├── evaluate.py
-│   │   │   └── utils.py
-│   │   └── results/
-│   │       └── .gitkeep
-└── utils/
-    ├── llm_interface.py
-    ├── metrics.py
-    └── data_loader.py
-```
 
 ## Benchmarks
 
