@@ -5,6 +5,16 @@
 
 set -e  # Exit on any error
 
+# Activate conda environment if available
+CONDA_ENV_NAME="llms"  # Change this to your conda env name if different
+if command -v conda &> /dev/null; then
+    eval "$(conda shell.bash hook)"
+    if conda env list | grep -q "$CONDA_ENV_NAME"; then
+        conda activate "$CONDA_ENV_NAME"
+        echo "Activated conda environment: $CONDA_ENV_NAME"
+    fi
+fi
+
 MODELS_FILE="models.txt"
 MODELS_DIR="./models"
 
@@ -41,7 +51,7 @@ while IFS= read -r model_id; do
     echo -e "${YELLOW}Processing: $model_id${NC}"
     
     # Use Python to download the model using huggingface_hub
-    python3 << EOF
+    python << EOF
 import os
 from huggingface_hub import snapshot_download
 from transformers import AutoTokenizer, AutoModelForCausalLM
