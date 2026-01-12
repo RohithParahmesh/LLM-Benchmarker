@@ -1,0 +1,36 @@
+[0;32m========================================[0m
+[0;32mLLM Benchmark Runner - Automated[0m
+[0;32m========================================[0m
+Timestamp: 20260109_074828
+Log file: /mnt/c/Projects/NPCI/LLM-Benchmarker/logs/benchmark_20260109_074828.log
+[0;32m✓ Python3 found[0m
+Checking dependencies...
+[1;33mInstalling dependencies...[0m
+benchmark.sh: line 52: pip: command not found
+[0;34mFound 2 model(s) to benchmark[0m
+  - 
+  - meta-llama/Llama-2-7b
+
+[0;34m========================================[0m
+[0;34m[1/2] Benchmarking: [0m
+[0;34m========================================[0m
+Traceback (most recent call last):
+  File "/mnt/c/Projects/NPCI/LLM-Benchmarker/run_benchmark.py", line 10, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+[0;31m✗ Failed for [0m
+
+[0;34m========================================[0m
+[0;34m[2/2] Benchmarking: meta-llama/Llama-2-7b[0m
+[0;34m========================================[0m
+Traceback (most recent call last):
+  File "/mnt/c/Projects/NPCI/LLM-Benchmarker/run_benchmark.py", line 10, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+[0;31m✗ Failed for meta-llama/Llama-2-7b[0m
+
+[0;32m========================================[0m
+[0;32m✓ All benchmarks completed[0m
+[0;32m========================================[0m
+[0;32mResults saved to: /mnt/c/Projects/NPCI/LLM-Benchmarker/results[0m
+[0;32mLogs saved to: /mnt/c/Projects/NPCI/LLM-Benchmarker/logs/benchmark_20260109_074828.log[0m

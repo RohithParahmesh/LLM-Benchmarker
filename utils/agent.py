@@ -1,150 +1,116 @@
 """
-Agent Base Class - Extend this for your custom agents
+Agent module for LLM inference and task execution.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any
+import os
+from typing import Optional
+import torch
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    pipeline
+)
 
 
-class BaseAgent(ABC):
-    """
-    Base class for benchmark agents
+class Agent:
+    """LLM Agent for running benchmarks"""
     
-    Extend this class to create your custom agent for benchmarking.
-    Your agent will be instantiated with a model and tokenizer,
-    then execute() will be called for each test case.
-    """
-    
-    def __init__(self, model, tokenizer, device: str = "cuda"):
+    def __init__(self, model_id: str, models_dir: str = "./models", device: Optional[str] = None):
         """
-        Initialize agent with model and tokenizer
+        Initialize the agent with a specific model.
         
         Args:
-            model: Transformer model
-            tokenizer: Model tokenizer
-            device: Device to run on (cuda/cpu)
+            model_id: HuggingFace model ID (e.g., "meta-llama/Llama-2-7b")
+            models_dir: Directory where models are cached
+            device: Device to run on (cuda, cpu, auto). Auto-detects if not specified.
         """
-        self.model = model
-        self.tokenizer = tokenizer
+        self.model_id = model_id
+        self.models_dir = models_dir
+        
+        # Set device
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
+        
+        # Set cache directory
+        os.environ["HF_HOME"] = models_dir
+        os.environ["TRANSFORMERS_CACHE"] = models_dir
+        
+        print(f"Loading model: {model_id}")
+        print(f"Device: {self.device}")
+        
+        # Load tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_id,
+            trust_remote_code=True,
+            cache_dir=models_dir
+        )
+        
+        # Set pad token if not set
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        
+        # Load model
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype="auto",
+            device_map="auto" if self.device == "cuda" else self.device,
+            trust_remote_code=True,
+            cache_dir=models_dir,
+            attn_implementation="flash_attention_2" if self.device == "cuda" else None
+        )
+        
+        self.model.eval()
+        print(f"Model loaded successfully")
     
-    @abstractmethod
-    def execute(self, input_text: str) -> str:
+    def generate(self, prompt: str, max_length: int = 256, temperature: float = 0.7) -> str:
         """
-        Execute agent logic on input
+        Generate a response for the given prompt.
         
         Args:
-            input_text: Input from CSV test case
-            
+            prompt: Input text prompt
+            max_length: Maximum length of generated text
+            temperature: Sampling temperature (higher = more creative)
+        
         Returns:
-            str: Agent output/response
+            Generated text response
         """
-        pass
-    
-    def setup(self):
-        """Optional: Setup before running tests"""
-        pass
-    
-    def teardown(self):
-        """Optional: Cleanup after running tests"""
-        pass
-
-
-# ============================================================================
-# EXAMPLE AGENTS - Copy and modify for your use cases
-# ============================================================================
-
-class NLToSQLAgent(BaseAgent):
-    """Example: NL to SQL translation agent"""
-    
-    def execute(self, input_text: str) -> str:
-        prompt = f"Convert to SQL:\nQ: {input_text}\nSQL:"
-        inputs = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
+        # Prepare inputs
+        inputs = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512
+        ).to(self.model.device)
         
-        import torch
+        # Generate
         with torch.no_grad():
             outputs = self.model.generate(
-                inputs,
-                max_new_tokens=256,
-                temperature=0.0,
+                **inputs,
+                max_new_tokens=max_length,
+                temperature=temperature,
                 top_p=0.95,
-                do_sample=False
+                do_sample=True,
+                pad_token_id=self.tokenizer.pad_token_id,
+                eos_token_id=self.tokenizer.eos_token_id
             )
         
-        result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        # Remove the prompt from output
-        return result[len(prompt):].strip() if result.startswith(prompt) else result
-
-
-class AmbiguityDetectionAgent(BaseAgent):
-    """Example: Ambiguity detection agent"""
+        # Decode
+        response = self.tokenizer.decode(
+            outputs[0],
+            skip_special_tokens=True
+        )
+        
+        # Remove the prompt from the response
+        if response.startswith(prompt):
+            response = response[len(prompt):].strip()
+        
+        return response
     
-    def execute(self, input_text: str) -> str:
-        prompt = f"Is this ambiguous?\nQuery: {input_text}\nAnalysis:"
-        inputs = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
-        
-        import torch
-        with torch.no_grad():
-            outputs = self.model.generate(
-                inputs,
-                max_new_tokens=256,
-                temperature=0.0,
-                top_p=0.95,
-                do_sample=False
-            )
-        
-        result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return result[len(prompt):].strip() if result.startswith(prompt) else result
-
-
-class SummarizationAgent(BaseAgent):
-    """Example: Text summarization agent"""
-    
-    def execute(self, input_text: str) -> str:
-        prompt = f"Summarize:\n{input_text}\n\nSummary:"
-        inputs = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
-        
-        import torch
-        with torch.no_grad():
-            outputs = self.model.generate(
-                inputs,
-                max_new_tokens=128,
-                temperature=0.0,
-                top_p=0.95,
-                do_sample=False
-            )
-        
-        result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return result[len(prompt):].strip() if result.startswith(prompt) else result
-
-
-# ============================================================================
-# HOW TO CREATE YOUR OWN AGENT
-# ============================================================================
-"""
-1. Extend BaseAgent
-2. Implement execute() method
-3. Optional: override setup() and teardown()
-
-Example:
-
-class MyCustomAgent(BaseAgent):
-    def execute(self, input_text: str) -> str:
-        # Your agent logic here
-        prompt = f"Your prompt template: {input_text}"
-        inputs = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
-        
-        import torch
-        with torch.no_grad():
-            outputs = self.model.generate(inputs, max_new_tokens=256)
-        
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-    
-    def setup(self):
-        # Optional initialization
-        print("Setting up my agent")
-    
-    def teardown(self):
-        # Optional cleanup
-        print("Cleaning up my agent")
-"""
+    def __del__(self):
+        """Cleanup when agent is destroyed"""
+        if hasattr(self, 'model'):
+            del self.model
+        if hasattr(self, 'tokenizer'):
+            del self.tokenizer
+        torch.cuda.empty_cache()

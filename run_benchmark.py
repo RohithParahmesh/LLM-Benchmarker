@@ -1,260 +1,235 @@
 #!/usr/bin/env python3
 """
-Simple LLM Benchmark Runner
-Orchestrates: Download → Setup Engine → Create Agent → Run Tests → Cleanup → Next Model
+Benchmark script for testing LLM agents on various tasks.
+Creates agents, tests them on datasets, and logs results.
 """
 
 import os
-import sys
 import json
-import pandas as pd
-import logging
+import csv
 import time
-from pathlib import Path
-from typing import List, Dict, Any, Type
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Tuple
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from utils.agent import BaseAgent, NLToSQLAgent, AmbiguityDetectionAgent
+from tqdm import tqdm
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# Registry of available agents
-AGENT_REGISTRY: Dict[str, Type[BaseAgent]] = {
-    "nl_to_sql": NLToSQLAgent,
-    "ambiguity_intent": AmbiguityDetectionAgent,
-}
+from utils.agent import Agent
 
 
-class SimpleBenchmark:
-    def __init__(self, cache_dir="./models", device="cuda"):
-        self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(exist_ok=True)
-        self.device = self._setup_device(device)
-        self.model = None
-        self.tokenizer = None
-        
-    def _setup_device(self, device):
-        """Setup device - fallback to CPU if CUDA unavailable"""
-        if device == "cuda" and torch.cuda.is_available():
-            logger.info(f"Using CUDA: {torch.cuda.get_device_name(0)}")
-            return "cuda"
-        logger.info("Using CPU")
-        return "cpu"
+class BenchmarkRunner:
+    """Runs benchmarks on LLM agents"""
     
-    def download_model(self, model_id: str) -> bool:
-        """Step 1: Download model from HuggingFace"""
-        logger.info(f"[Step 1] Downloading model: {model_id}")
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_id, 
-                trust_remote_code=True,
-                cache_dir=str(self.cache_dir)
-            )
-            logger.info(f"✓ Model downloaded: {model_id}")
-            return True
-        except Exception as e:
-            logger.error(f"✗ Download failed: {e}")
-            return False
-    
-    def setup_inference_engine(self) -> bool:
-        """Step 2: Setup inference engine"""
-        logger.info("[Step 2] Setting up inference engine")
-        try:
-            self.model.to(self.device)
-            self.model.eval()
-            for param in self.model.parameters():
-                param.requires_grad = False
-            logger.info(f"✓ Inference engine ready on {self.device}")
-            return True
-        except Exception as e:
-            logger.error(f"✗ Engine setup failed: {e}")
-            return False
-    
-    def create_agent(self, task_type: str) -> BaseAgent:
-        """Step 3: Create agent for the task"""
-        logger.info(f"[Step 3] Creating agent for task: {task_type}")
+    def __init__(self, models_dir: str = "./models", results_dir: str = "./results"):
+        self.models_dir = models_dir
+        self.results_dir = results_dir
+        self.logs_dir = "./logs"
         
-        if task_type not in AGENT_REGISTRY:
-            raise ValueError(
-                f"Unknown task: {task_type}. Available: {list(AGENT_REGISTRY.keys())}"
-            )
+        # Create directories if they don't exist
+        Path(self.results_dir).mkdir(exist_ok=True)
+        Path(self.logs_dir).mkdir(exist_ok=True)
         
-        agent_class = AGENT_REGISTRY[task_type]
-        agent = agent_class(self.model, self.tokenizer, self.device)
-        agent.setup()
-        return agent
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.results = {}
+        
+    def load_models(self) -> List[str]:
+        """Load model IDs from models.txt"""
+        models = []
+        with open("models.txt", "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    models.append(line)
+        return models
     
-    def run_tests(self, agent: BaseAgent, test_data: pd.DataFrame) -> Dict[str, Any]:
-        """Step 4: Run tests"""
-        logger.info(f"[Step 4] Running tests ({len(test_data)} cases)")
+    def load_test_data(self, data_file: str) -> List[Dict]:
+        """Load test data from CSV file"""
+        data = []
+        with open(data_file, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                data.append(row)
+        return data
+    
+    def evaluate_response(self, predicted: str, expected: str) -> Dict:
+        """
+        Evaluate a single response.
+        Returns metrics including exact match and similarity.
+        """
+        # Normalize strings
+        pred_norm = predicted.lower().strip()
+        exp_norm = expected.lower().strip()
         
+        # Exact match
+        exact_match = pred_norm == exp_norm
+        
+        # Partial match (check if expected is substring of predicted)
+        partial_match = exp_norm in pred_norm
+        
+        # Calculate similarity (simple token overlap)
+        pred_tokens = set(pred_norm.split())
+        exp_tokens = set(exp_norm.split())
+        if pred_tokens and exp_tokens:
+            overlap = len(pred_tokens & exp_tokens)
+            similarity = overlap / len(exp_tokens)
+        else:
+            similarity = 1.0 if exact_match else 0.0
+        
+        return {
+            "exact_match": exact_match,
+            "partial_match": partial_match,
+            "similarity": similarity
+        }
+    
+    def run_test_on_dataset(self, agent: Agent, dataset_name: str, test_data: List[Dict]) -> Dict:
+        """Run tests on a single dataset"""
         results = {
-            "total": len(test_data),
+            "dataset": dataset_name,
+            "total_tests": len(test_data),
             "passed": 0,
             "failed": 0,
-            "results": []
+            "exact_matches": 0,
+            "partial_matches": 0,
+            "avg_similarity": 0.0,
+            "avg_response_time": 0.0,
+            "details": []
         }
         
-        for idx, row in test_data.iterrows():
+        similarities = []
+        response_times = []
+        
+        print(f"\n  Testing on {dataset_name}...")
+        for i, test_case in enumerate(tqdm(test_data, desc=f"    {dataset_name}", leave=False)):
+            input_text = test_case["input"]
+            expected = test_case["expected_output"]
+            
+            # Generate response
+            start_time = time.time()
             try:
-                start = time.time()
-                output = agent.execute(row['input'])
-                elapsed = time.time() - start
-                
-                test_result = {
-                    "index": idx,
-                    "input": row['input'],
-                    "expected": row.get('expected_output', ''),
-                    "output": output,
-                    "time": elapsed,
-                    "passed": output.strip() == str(row.get('expected_output', '')).strip() if 'expected_output' in row else None
-                }
-                
-                if test_result['passed']:
-                    results["passed"] += 1
-                elif test_result['passed'] is False:
-                    results["failed"] += 1
-                
-                results["results"].append(test_result)
-                logger.info(f"  Test {idx+1}: {elapsed:.2f}s")
-                
+                response = agent.generate(input_text)
+                response_time = time.time() - start_time
             except Exception as e:
-                logger.error(f"  Test {idx+1} failed: {e}")
+                response = f"Error: {str(e)}"
+                response_time = time.time() - start_time
+            
+            # Evaluate
+            evaluation = self.evaluate_response(response, expected)
+            
+            if evaluation["exact_match"]:
+                results["passed"] += 1
+                results["exact_matches"] += 1
+            elif evaluation["partial_match"]:
+                results["partial_matches"] += 1
+            else:
                 results["failed"] += 1
-                results["results"].append({
-                    "index": idx,
-                    "error": str(e)
-                })
+            
+            similarities.append(evaluation["similarity"])
+            response_times.append(response_time)
+            
+            # Store details
+            results["details"].append({
+                "input": input_text,
+                "expected": expected,
+                "predicted": response,
+                "exact_match": evaluation["exact_match"],
+                "partial_match": evaluation["partial_match"],
+                "similarity": evaluation["similarity"],
+                "response_time": response_time
+            })
+        
+        # Calculate averages
+        results["avg_similarity"] = sum(similarities) / len(similarities) if similarities else 0.0
+        results["avg_response_time"] = sum(response_times) / len(response_times) if response_times else 0.0
         
         return results
     
-    def cleanup(self):
-        """Step 5: Cleanup resources"""
-        logger.info("[Step 5] Cleaning up resources")
-        if self.model:
-            del self.model
-        if self.tokenizer:
-            del self.tokenizer
-        if torch.cuda.is_available():
+    def run_benchmark_for_model(self, model_id: str) -> Dict:
+        """Run complete benchmark for a single model"""
+        print(f"\n{'='*60}")
+        print(f"Benchmarking: {model_id}")
+        print(f"{'='*60}")
+        
+        model_results = {
+            "model": model_id,
+            "timestamp": datetime.now().isoformat(),
+            "datasets": {}
+        }
+        
+        try:
+            # Create agent
+            print(f"\nInitializing agent...")
+            agent = Agent(model_id=model_id, models_dir=self.models_dir)
+            
+            # Load and test on all datasets
+            dataset_files = [
+                ("ambiguity_intent", "test_data/ambiguity_intent.csv"),
+                ("nl_to_sql", "test_data/nl_to_sql.csv")
+            ]
+            
+            for dataset_name, dataset_path in dataset_files:
+                if os.path.exists(dataset_path):
+                    test_data = self.load_test_data(dataset_path)
+                    dataset_results = self.run_test_on_dataset(agent, dataset_name, test_data)
+                    model_results["datasets"][dataset_name] = dataset_results
+                    
+                    # Print summary
+                    print(f"\n  Results for {dataset_name}:")
+                    print(f"    Exact matches: {dataset_results['exact_matches']}/{dataset_results['total_tests']}")
+                    print(f"    Partial matches: {dataset_results['partial_matches']}/{dataset_results['total_tests']}")
+                    print(f"    Avg similarity: {dataset_results['avg_similarity']:.3f}")
+                    print(f"    Avg response time: {dataset_results['avg_response_time']:.3f}s")
+            
+            # Clean up
+            del agent
             torch.cuda.empty_cache()
-        logger.info("✓ Cleanup complete")
-
-
-def register_agent(task_name: str, agent_class: Type[BaseAgent]):
-    """Register a custom agent"""
-    AGENT_REGISTRY[task_name] = agent_class
-    logger.info(f"Registered agent: {task_name}")
-
-
-def load_test_data(csv_file: str) -> pd.DataFrame:
-    """Load test data from CSV or Excel"""
-    filepath = Path(csv_file)
-    
-    if not filepath.exists():
-        logger.error(f"Test data file not found: {csv_file}")
-        return pd.DataFrame()
-    
-    if filepath.suffix == '.xlsx' or filepath.suffix == '.xls':
-        return pd.read_excel(csv_file)
-    else:
-        return pd.read_csv(csv_file)
-
-
-def save_results(results: Dict, model_id: str, task_type: str):
-    """Save results to JSON"""
-    filename = f"results/{task_type}_{model_id.replace('/', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    Path("results").mkdir(exist_ok=True)
-    
-    with open(filename, 'w') as f:
-        json.dump(results, f, indent=2)
-    
-    logger.info(f"✓ Results saved: {filename}")
-
-
-def run_benchmark(models: List[str], tasks: List[str], test_data_dir: str = "test_data"):
-    """
-    Main benchmark runner
-    Flow: Download → Setup → Agent → Tests → Cleanup → Next Model
-    """
-    logger.info("="*70)
-    logger.info("LLM BENCHMARK RUNNER")
-    logger.info("="*70)
-    
-    for model_id in models:
-        logger.info(f"\n{'='*70}")
-        logger.info(f"MODEL: {model_id}")
-        logger.info(f"{'='*70}")
-        
-        benchmark = SimpleBenchmark()
-        
-        # Step 1: Download
-        if not benchmark.download_model(model_id):
-            logger.error(f"Skipping {model_id}")
-            continue
-        
-        # Step 2: Setup engine
-        if not benchmark.setup_inference_engine():
-            logger.error(f"Skipping {model_id}")
-            continue
-        
-        # Run each task
-        for task_type in tasks:
-            logger.info(f"\n--- Task: {task_type} ---")
             
-            # Load test data
-            csv_file = f"{test_data_dir}/{task_type}.csv"
-            test_data = load_test_data(csv_file)
-            
-            if test_data.empty:
-                logger.warning(f"No test data for {task_type}")
-                continue
-            
-            try:
-                # Step 3: Create agent
-                agent = benchmark.create_agent(task_type)
-                
-                # Step 4: Run tests
-                results = benchmark.run_tests(agent, test_data)
-                results["model"] = model_id
-                results["task"] = task_type
-                
-                # Save results
-                save_results(results, model_id, task_type)
-                
-                logger.info(f"Results: {results['passed']}/{results['total']} passed")
-                
-            except Exception as e:
-                logger.error(f"Task failed: {e}")
+        except Exception as e:
+            print(f"Error benchmarking {model_id}: {str(e)}")
+            model_results["error"] = str(e)
         
-        # Step 5: Cleanup
-        benchmark.cleanup()
-        logger.info("")
+        return model_results
     
-    logger.info("="*70)
-    logger.info("BENCHMARK COMPLETE")
-    logger.info("="*70)
+    def run(self):
+        """Run complete benchmark suite"""
+        print("\n" + "="*60)
+        print("LLM Benchmark Suite")
+        print("="*60)
+        
+        models = self.load_models()
+        print(f"\nFound {len(models)} model(s) to benchmark")
+        
+        all_results = {
+            "timestamp": self.timestamp,
+            "total_models": len(models),
+            "models": []
+        }
+        
+        for i, model_id in enumerate(models, 1):
+            print(f"\n[{i}/{len(models)}]", end=" ")
+            model_results = self.run_benchmark_for_model(model_id)
+            all_results["models"].append(model_results)
+            
+            # Save results after each model
+            self.save_results(all_results)
+        
+        print("\n" + "="*60)
+        print("Benchmark Complete!")
+        print("="*60)
+        print(f"Results saved to: {self.results_dir}")
+        
+        return all_results
+    
+    def save_results(self, results: Dict):
+        """Save benchmark results to JSON"""
+        results_file = os.path.join(
+            self.results_dir,
+            f"benchmark_results_{self.timestamp}.json"
+        )
+        with open(results_file, "w") as f:
+            json.dump(results, f, indent=2)
+        print(f"Results saved to: {results_file}")
 
 
 if __name__ == "__main__":
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="LLM Benchmark Runner")
-    parser.add_argument("--model", type=str, required=True, help="HuggingFace model ID to benchmark")
-    parser.add_argument("--tasks", type=str, default="nl_to_sql,ambiguity_intent", help="Comma-separated list of tasks")
-    parser.add_argument("--test-data-dir", type=str, default="test_data", help="Directory with test CSV files")
-    args = parser.parse_args()
-    
-    # Parse tasks
-    TASKS = [t.strip() for t in args.tasks.split(",")]
-    TEST_DATA_DIR = args.test_data_dir
-    MODELS = [args.model]
-    
-    run_benchmark(MODELS, TASKS, TEST_DATA_DIR)
-
+    runner = BenchmarkRunner()
+    results = runner.run()
