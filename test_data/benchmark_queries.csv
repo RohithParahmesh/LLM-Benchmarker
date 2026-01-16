@@ -1,0 +1,170 @@
+id,query,sql,date,is_context_dependent
+1c018d46-8187-4119-b3f1-f9ce4a4c95aa,what was the overall txn amount,"SELECT cast(sum(txnamount) as double) / 100 as overall_transaction_amount
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt = '2025-09-09'",2025-09-16 06:48:41.678299+00:00,False
+0c1fc68b-7fa6-4b4b-ad25-66264d3d28de,give success count,"SELECT count(*) as transaction_count
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-08-18'
+   and '2025-08-15'
+   and upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL')",2025-09-02 05:43:40.349844+00:00,False
+47939e0d-7a75-4ae2-8ba3-da5805dfe380,"need count of autopay execution volume for total number of transactions having txn amount per transaction is less than 500, 400,300,200 & 100 separately","SELECT count(*) as transaction_count
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-07-01'
+   and '2025-07-31'
+   and initmode = '11'
+   and purposecode = '14'
+   and txnamount < 500
+GROUP BY txnamount < 500, txnamount < 400, txnamount < 300, txnamount < 200, txnamount < 100",2025-08-28 03:49:23.120930+00:00,False
+b9526294-6c52-4f30-bd63-b14617375d9d,number of p2p transactions which are having amount greater than 50000,"SELECT count(*) as transaction_count
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-08-26'
+   and '2025-08-27'
+   and (trim(pycode)) in ('NULL', '0000', '')
+   and txnamount > 50000
+   and upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL')",2025-09-01 07:38:41.793928+00:00,False
+4b9c6c36-5b34-4d4e-9de6-af14bdbda919,Give it for 26th of may 2025,"SELECT count(*) as successful_autopay_transactions
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt = '2025-05-26'
+   and upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL')
+   and initmode = '11'
+   and purposecode = '14'",2025-09-01 07:37:11.325933+00:00,True
+2baebd17-9ae2-4a98-871c-69d1fe36ada9,"Give it for 26th of may 2025. need count of autopay execution volume for total number of transactions having txn amount per transaction is less than 500, 400,300,200 & 100 separately and also need of unique count of VPA against each category","SELECT count(*) as transaction_count,
+       count(distinct prfvaddr) as unique_vpa_count
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-07-01'
+   and '2025-07-31'
+   and initmode = '11'
+   and purposecode = '14'
+   and txnamount < 500
+GROUP BY txnamount < 500, txnamount < 400, txnamount < 300, txnamount < 200, txnamount < 100",2025-08-28 03:50:36.434365+00:00,True
+29a5fd48-cb46-4b61-b8ff-b984bd1b8907,"UPI rrn wise approved , td , bd qurey","SELECT custrefno as rrn,
+       currstatusdesc as status,
+       case when upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL') then 'Approved'
+            when upi_masters.upi_new_errorcode_respcd_master.approvedflag = 'TD' then 'Technical Decline'
+            when upi_masters.upi_new_errorcode_respcd_master.approvedflag = 'BD' then 'Business Decline' end as transaction_status
+FROM   upi_txn.urcs_ft_txns join upi_masters.upi_new_errorcode_respcd_master
+        ON urcs_ft_txns.errorcode = upi_new_errorcode_respcd_master.error_code
+WHERE  asdt between '2025-08-19'
+   and '2025-08-19'
+GROUP BY custrefno, currstatusdesc, upi_new_errorcode_respcd_master.approvedflag",2025-08-28 03:53:43.528036+00:00,False
+5589bc1d-8f98-4f18-8d1f-e16afadeebce,upi,"SELECT txnid,
+       currstatusdesc,
+       asdt
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt = cast(current_date as varchar)
+   and upper(trim(currstatusdesc)) like '%UP%'",2025-08-28 04:14:52.208916+00:00,False
+31496d63-fe08-4a42-8867-35ea86f9ff9a,want to find the total amount transfered by each payyee,"SELECT prdmobile as payee_identifier,
+       count(*) as transaction_volume,
+       cast(sum(txnamount) as double) / 100 as total_transaction_amount
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-04-01'
+   and '2025-05-31'
+GROUP BY prdmobile",2025-08-28 03:55:28.721856+00:00,False
+0325a78f-f434-4420-b5da-cbebeb1dd4ed,i want all gtransaction of upi data,"SELECT *
+FROM   upi_txn.urcs_ft_txns_encrypt
+WHERE  asdt between '2025-08-01'
+   and '2025-08-07'",2025-08-08 07:01:09.441233+00:00,False
+457e72f3-b923-4793-a42f-f2a4bd2a5104,Please find transactions in which we have to fetch people who have done more than 5 transactions in a day (P2M). payer side,"SELECT prdmobile as payer_mobile,
+       count(*) as transaction_count
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-08-07'
+   and '2025-08-07'
+   and (not trim(pycode) in ('NULL', '0000', '7407', ''))
+GROUP BY prdmobile having count(*) > 5",2025-08-08 06:51:48.747642+00:00,False
+807246f8-25ba-4bf7-bb60-6b47699a9791,To calculate the total transaction amount for each customer within a 24-hour running window,"SELECT prdmobile,
+       cast(sum(txnamount) as double) / 100 as total_transaction_amount
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-08-06'
+   and '2025-08-08'
+GROUP BY prdmobile",2025-08-08 07:02:38.221328+00:00,False
+da993e8f-7fea-4dff-a38a-50627af9f530,total number of records in table upi_txn,"SELECT count(*) as total_records
+FROM   upi_txn.urcs_ft_txns",2025-08-08 05:59:53.751519+00:00,False
+7c495a86-09c6-418a-8ab7-3f650deeb2d1,Please find transactions in which we have to fetch people who have done more than 5 transactions in a day (P2M). pls include all columns,"SELECT *
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt = '2025-08-07'
+   and (not trim(pycode) in ('NULL', '0000', '7407', ''))
+   and (SELECT count(*)
+     FROM   upi_txn.urcs_ft_txns as t
+     WHERE  t.asdt = '2025-08-07'
+        and t.prdmobile = upi_txn.urcs_ft_txns.prdmobile
+        and (not trim(t.pycode) in ('NULL', '0000', '7407', ''))) > 5",2025-08-08 07:00:37.676037+00:00,False
+1a955633-2e97-4ac5-8a57-b180d6250f5e,Please find transactions in which we have to fetch people who have done more than 5 transactions in a day (P2M). Account no side,"SELECT prdmobile as unique_users,
+       count(*) as transaction_count
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-08-07'
+   and '2025-08-07'
+   and (trim(prcode) in ('NULL', '0000', '')
+   and not trim(pycode) in ('NULL', '0000', '7407', ''))
+GROUP BY prdmobile having count(*) > 5",2025-08-08 06:53:15.374935+00:00,False
+0be64ce4-a0ad-4645-a057-66c8aa504089,Please find transactions in which we have to fetch people who have done more than 5 transactions in a day (P2M). pls include account number column as well with their bank codes,"SELECT prdmobile as payer_mobile,
+       pydmobile as payee_mobile,
+       praccno as payer_account_number,
+       pyaccno as payee_account_number,
+       prnfsparticipantid as payer_bank_code,
+       pynfsparticipantid as payee_bank_code,
+       count(*) as transaction_count
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt = '2025-08-07'
+   and (not trim(pycode) in ('NULL', '0000', '7407', ''))
+   and upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL')
+GROUP BY prdmobile, pydmobile, praccno, pyaccno, prnfsparticipantid, pynfsparticipantid having count(*) > 5",2025-08-08 06:59:28.781394+00:00,False
+086fd0a0-654f-42ee-8114-134449081313,To calculate the total transaction amount for each customer within a 24-hour window,"SELECT custrefno,
+       cast(sum(txnamount) as double) / 100 as total_transaction_amount
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-08-06'
+   and '2025-08-08'
+GROUP BY custrefno",2025-08-08 07:01:19.951405+00:00,False
+035e0900-1aef-483a-b2a5-fa57c1dcfcb9,B3 response code data,"SELECT cast(txnamount as double) / 100 as transaction_amount,
+       purposecode,
+       pycode,
+       prcode,
+       currstatusdesc,
+       errorcode,
+       finalrespcode,
+       benrespcode,
+       asdt
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-08-01'
+   and '2025-08-07'
+   and upper(trim(finalrespcode)) = 'B3'",2025-08-08 07:06:13.623286+00:00,False
+8533e4a3-5782-4287-9492-192b3e651d07,B3 response code data for Central bank of India,"SELECT finalrespcode,
+       count(*) as transaction_count
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-08-01'
+   and '2025-08-07'
+   and upper(trim(finalrespcode)) = 'B3' /* B3 response code */
+   and upper(trim(crnfsparticipantid)) = 'CBI' /* Central Bank of India */
+GROUP BY finalrespcode",2025-08-08 07:09:32.947239+00:00,False
+5ed821cf-a4ce-4fc4-b27e-af328401ccc7,"my agg table containes fileds 
+payer_account_numberVARCHAR
+payer_ifscVARCHAR
+total_amount_transferredDECIMAL
+typeVARCHAR(empty) and table 
+joined255834 has fields
+txnidVARCHAR
+payer_account_numberVARCHAR
+payer_ifscVARCHAR
+payee_account_numberVARCHAR
+payee_ifscVARCHAR
+txn_statusVARCHAR
+payer_requested_amountDECIMAL
+beneficiary_mcc_codeVARCHAR
+remitter_mcc_codeVARCHAR
+payee_addressVARCHAR
+error_codeVARCHAR
+initiation_modeVARCHAR
+purposecodeVARCHAR
+txnnoteVARCHAR
+payer_account_typeVARCHAR
+payee_account_typeVARCHAR
+riskscoreVARCHAR
+asdtVARCHAR
+txn_idVARCHAR
+case_type_codeVARCHAR
+tag_type..","SELECT pydmobile as payee_identifier,
+       count(*) as transaction_volume,
+       cast(sum(txnamount) as double) / 100 as total_transaction_amount
+FROM   upi_txn.urcs_ft_txns
+WHERE  asdt between '2025-04-01'
+   and '2025-05-31'
+GROUP BY pydmobile",2025-08-28 03:56:46.859546+00:00,False
