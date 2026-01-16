@@ -1,0 +1,42 @@
+{
+  "models": [
+    {
+      "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+      "enabled": true,
+      "nlq_instruction_key": null,
+      "sql_instruction_key": null,
+      "description": "Small model for quick testing"
+    },
+    {
+      "model_id": "infly/OpenCoder-8B-Instruct",
+      "enabled": true,
+      "nlq_instruction_key": null,
+      "sql_instruction_key": null,
+      "description": "Code-focused model"
+    },
+    {
+      "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+      "enabled": true,
+      "nlq_instruction_key": null,
+      "sql_instruction_key": null,
+      "description": "Meta's latest Llama model"
+    },
+    {
+      "model_id": "Qwen/Qwen2.5-7B-Instruct",
+      "enabled": true,
+      "nlq_instruction_key": null,
+      "sql_instruction_key": null,
+      "description": "Alibaba's Qwen model"
+    },
+    {
+      "model_id": "mistralai/Mistral-7B-Instruct-v0.3",
+      "enabled": true,
+      "nlq_instruction_key": null,
+      "sql_instruction_key": null,
+      "description": "Mistral's instruction-tuned model"
+    }
+  ],
+  "benchmark_dataset": "test_data/benchmark_queries.csv",
+  "output_dir": "./results",
+  "notes": "Edit this file to enable/disable models or customize instructions. Set 'enabled' to false to skip a model."
+}
