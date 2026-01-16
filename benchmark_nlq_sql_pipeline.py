@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Dict
 
 from utils import NLQAgent, SQLAgent, NLQSQLPipeline
+from utils.schema_context import get_schema_context
 
 
 def load_queries(csv_path: str) -> List[Dict]:
@@ -61,10 +62,13 @@ def benchmark_nlq_sql_pipeline(
     print(f"Loaded {len(query_pairs)} query pairs")
     print()
     
+    # Load schema context
+    schema_context = get_schema_context()
+    
     # Initialize agents
     nlq_agent = NLQAgent(model_id)
     sql_agent = SQLAgent(model_id)
-    pipeline = NLQSQLPipeline(nlq_agent, sql_agent)
+    pipeline = NLQSQLPipeline(nlq_agent, sql_agent, schema_context=schema_context)
     
     # Process queries
     results = []

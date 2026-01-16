@@ -17,16 +17,18 @@ class NLQSQLPipeline:
     3. Pass refined query through SQLAgent for SQL generation
     """
     
-    def __init__(self, nlq_agent: NLQAgent, sql_agent: SQLAgent):
+    def __init__(self, nlq_agent: NLQAgent, sql_agent: SQLAgent, schema_context: Optional[str] = None):
         """
         Initialize pipeline with two agents.
         
         Args:
             nlq_agent: NLQAgent instance for query refinement
             sql_agent: SQLAgent instance for SQL generation
+            schema_context: Optional database schema context for agents
         """
         self.nlq_agent = nlq_agent
         self.sql_agent = sql_agent
+        self.schema_context = schema_context
     
     def execute(self, user_query: str, 
                 nlq_instruction_key: Optional[str] = None,
@@ -46,18 +48,19 @@ class NLQSQLPipeline:
             - sql: Generated SQL from SQLAgent
             - stages: Details from each stage
         """
-        # Stage 1: NLQ Refinement
+        # Stage 1: NLQ Refinement - pass schema context
         nlq_result = self.nlq_agent.process(
             user_query,
-            custom_instruction_key=nlq_instruction_key
+            custom_instruction_key=nlq_instruction_key,
+            context=self.schema_context or ""
         )
         refined_query = nlq_result["refined_query"]
         
-        # Stage 2: SQL Generation
+        # Stage 2: SQL Generation - pass refined query and schema context
         sql_result = self.sql_agent.process(
             refined_query,
             custom_instruction_key=sql_instruction_key,
-            context=f"Refined from: {user_query}"
+            context=self.schema_context or ""
         )
         
         return {

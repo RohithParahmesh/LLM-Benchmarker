@@ -19,11 +19,14 @@ class CustomInstruction:
     def render_prompt(self, user_input: str, context: str = "") -> tuple:
         """
         Render both system and user prompts.
+        Args:
+            user_input: The main input (query/text to process)
+            context: Optional context (schema, previous results, etc.)
         Returns: (system_prompt, user_prompt)
         """
         user_prompt = self.user_prompt_template.format(
             input=user_input,
-            context=context
+            context=context if context else ""
         )
         return self.system_prompt, user_prompt
 
@@ -100,6 +103,7 @@ For all VARCHAR fields in schema mention to use UPPER(TRIM(column_name)) for con
 
 {input}
 
+### Schema Information ###
 {context}
 
 Refined Query:""",
@@ -176,6 +180,7 @@ You are an expert SQL query generator for UPI transaction analysis.
 
 {input}
 
+### Schema Information ###
 {context}
 
 Generate only the SQL query without explanations.
