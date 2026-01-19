@@ -171,7 +171,7 @@ class NLQAgent(BaseAgent):
             prompt = self._get_default_prompt(input_text, context)
         
         response = self.generate(prompt, max_length=256)
-        refined_query = response.strip()
+        refined_query = self._extract_refined_query(response)
         
         return {
             "input": input_text,
@@ -198,6 +198,32 @@ Provide a refined version of the query that is:
 - Clear about intent
 
 Refined Query:"""
+    
+    @staticmethod
+    def _extract_refined_query(response: str) -> str:
+        """Extract refined query from response"""
+        response = response.strip()
+        
+        # Look for "Refined Query:" marker
+        if "Refined Query:" in response:
+            parts = response.split("Refined Query:")
+            if len(parts) > 1:
+                refined = parts[1].strip()
+                # Take only the first line or up to required_columns marker
+                if "required_columns" in refined:
+                    refined = refined.split("required_columns")[0].strip()
+                lines = refined.split('\n')
+                refined = lines[0].strip() if lines else refined
+                return refined
+        
+        # If no marker found, try to extract first meaningful line
+        lines = response.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('[') and len(line) > 10:
+                return line
+        
+        return response if response else "Unable to extract refined query"
 
 
 class SQLAgent(BaseAgent):
@@ -261,14 +287,36 @@ SQL Query:"""
     
     @staticmethod
     def _extract_sql(response: str) -> str:
-        """Extract SQL from response"""
+        """Extract SQL from response - handles multi-line SQL"""
         response = response.strip()
-        for prefix in ["SQL:", "sql:", "QUERY:", "Query:", "SELECT", "select"]:
-            if response.startswith(prefix):
-                response = response[len(prefix):].strip()
-                break
         
-        lines = response.split('\n')
-        sql = lines[0].strip() if lines else response
+        # Look for "SQL Query:" or "SQL:" marker
+        sql = None
+        markers = ["SQL Query:", "SQL:", "SELECT", "select"]
         
-        return sql
+        for marker in markers:
+            if marker in response:
+                parts = response.split(marker, 1)
+                if len(parts) > 1:
+                    sql = parts[1].strip()
+                    break
+        
+        if sql is None:
+            sql = response
+        
+        # Clean up - remove markdown code blocks if present
+        if sql.startswith("```"):
+            sql = sql.split("```")[1]
+            if sql.startswith("sql"):
+                sql = sql[3:]
+        
+        sql = sql.strip()
+        
+        # Remove any trailing explanation after the SQL query
+        # Look for common explanation starters
+        for stopper in ["\n\n###", "\n### Example", "-- Explanation:", "-- Note:", "-- Test:"]:
+            if stopper in sql:
+                sql = sql.split(stopper)[0]
+        
+        # If empty, return original response
+        return sql if sql else response
