@@ -17,14 +17,23 @@ def load_queries(csv_path: str) -> List[Dict]:
     import csv
     queries = []
     with open(csv_path, 'r', encoding='utf-8') as f:
-        reader = csv.reader(f)
-        next(reader)  # Skip header
+        reader = csv.DictReader(f)
         for row in reader:
-            if row and len(row) >= 2:
-                queries.append({
-                    "natural_language": row[0],
-                    "expected_sql": row[1] if len(row) > 1 else ""
-                })
+            if row:
+                # Handle both formats: benchmark_queries.csv (with id, query, sql) 
+                # and nl_to_sql.csv (with input, expected_output)
+                if 'query' in row and 'sql' in row:
+                    # benchmark_queries.csv format
+                    queries.append({
+                        "natural_language": row['query'],
+                        "expected_sql": row['sql']
+                    })
+                elif 'input' in row and 'expected_output' in row:
+                    # nl_to_sql.csv format
+                    queries.append({
+                        "natural_language": row['input'],
+                        "expected_sql": row['expected_output']
+                    })
     return queries
 
 
