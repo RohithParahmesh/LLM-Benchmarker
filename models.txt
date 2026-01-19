@@ -1,5 +1,0 @@
-infly/OpenCoder-8B-Instruct
-jetmoe/jetmoe-8b
-meta-llama/Llama-3.1-8B-Instruct
-Qwen/Qwen2.5-7B-Instruct
-mistralai/Mistral-7B-Instruct-v0.3

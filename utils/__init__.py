@@ -1,6 +1,7 @@
 """Utils module for LLM Benchmarker"""
 from .three_agents import BaseAgent, NLQAgent, SQLAgent, AmbiguityAgent
 from .nlq_sql_pipeline import NLQSQLPipeline, AmbiguityPipeline
+from .simple_agents import SimpleNLQAgent, SimpleSQLAgent, SimplePipeline
 from .custom_instructions import (
     CustomInstruction,
     InstructionRegistry,
@@ -17,6 +18,9 @@ __all__ = [
     "AmbiguityAgent",
     "NLQSQLPipeline",
     "AmbiguityPipeline",
+    "SimpleNLQAgent",
+    "SimpleSQLAgent",
+    "SimplePipeline",
     "CustomInstruction",
     "InstructionRegistry",
     "get_registry",
