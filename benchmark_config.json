@@ -1,13 +1,6 @@
 {
   "models": [
     {
-      "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-      "enabled": true,
-      "nlq_instruction_key": null,
-      "sql_instruction_key": null,
-      "description": "Small model for quick testing"
-    },
-    {
       "model_id": "infly/OpenCoder-8B-Instruct",
       "enabled": true,
       "nlq_instruction_key": null,
@@ -34,6 +27,13 @@
       "nlq_instruction_key": null,
       "sql_instruction_key": null,
       "description": "Mistral's instruction-tuned model"
+    },
+    {
+      "model_id": "jetmoe/jetmoe-8b",
+      "enabled": true,
+      "nlq_instruction_key": null,
+      "sql_instruction_key": null,
+      "description": "JetMOE's efficient mixture-of-experts model"
     }
   ],
   "benchmark_dataset": "test_data/benchmark_queries.csv",
