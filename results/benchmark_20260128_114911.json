@@ -1,0 +1,170 @@
+{
+  "model": "jetmoe/jetmoe-8b",
+  "timestamp": "20260128_114911",
+  "total_queries": 20,
+  "total_time_seconds": 688.32,
+  "avg_time_per_query": 34.42,
+  "avg_similarity_score": 0.076,
+  "results": [
+    {
+      "query": "what was the overall txn amount",
+      "refined_query": "[the refined query]",
+      "generated_sql": "[the SQL generated from the refined query]",
+      "expected_sql": "SELECT cast(sum(txnamount) as double) / 100 as overall_transaction_amount\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt = '2025-09-09'",
+      "similarity_score": 0.053,
+      "time_seconds": 10.17
+    },
+    {
+      "query": "give success count",
+      "refined_query": "```sql",
+      "generated_sql": "SELECT CAST(SUM(txnamount) AS DOUBLE) / 100 AS sum,",
+      "expected_sql": "SELECT count(*) as transaction_count\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-08-18'\n   and '2025-08-15'\n   and upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL')",
+      "similarity_score": 0.091,
+      "time_seconds": 35.65
+    },
+    {
+      "query": "need count of autopay execution volume for total number of transactions having txn amount per transaction is less than 500, 400,300,200 & 100 separately",
+      "refined_query": "Output: SELECT COUNT(*) AS autopay_volume FROM autopay_executions WHERE (txn_amount < 500 AND pycode IN ('NULL','0000','') AND prdcode IN ('NULL','0000','')) OR (txn_amount < 400 AND pycode IN ('NULL','0000','') AND prdcode IN ('NULL','0000','')) OR (txn_amount < 300 AND pycode IN ('NULL','0000','') AND prdcode IN ('NULL','0000','')) OR (txn_amount < 200 AND py",
+      "generated_sql": "SELECT COUNT(*) AS autopay_volume",
+      "expected_sql": "SELECT count(*) as transaction_count\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-07-01'\n   and '2025-07-31'\n   and initmode = '11'\n   and purposecode = '14'\n   and txnamount < 500\nGROUP BY txnamount < 500, txnamount < 400, txnamount < 300, txnamount < 200, txnamount < 100",
+      "similarity_score": 0.107,
+      "time_seconds": 37.52
+    },
+    {
+      "query": "number of p2p transactions which are having amount greater than 50000",
+      "refined_query": "```sql",
+      "generated_sql": "SELECT",
+      "expected_sql": "SELECT count(*) as transaction_count\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-08-26'\n   and '2025-08-27'\n   and (trim(pycode)) in ('NULL', '0000', '')\n   and txnamount > 50000\n   and upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL')",
+      "similarity_score": 0.042,
+      "time_seconds": 35.36
+    },
+    {
+      "query": "Give it for 26th of may 2025",
+      "refined_query": "SELECT *",
+      "generated_sql": "SELECT",
+      "expected_sql": "SELECT count(*) as successful_autopay_transactions\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt = '2025-05-26'\n   and upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL')\n   and initmode = '11'\n   and purposecode = '14'",
+      "similarity_score": 0.05,
+      "time_seconds": 33.73
+    },
+    {
+      "query": "Give it for 26th of may 2025. need count of autopay execution volume for total number of transactions having txn amount per transaction is less than 500, 400,300,200 & 100 separately and also need of unique count of VPA against each category",
+      "refined_query": "SELECT",
+      "generated_sql": "SELECT",
+      "expected_sql": "SELECT count(*) as transaction_count,\n       count(distinct prfvaddr) as unique_vpa_count\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-07-01'\n   and '2025-07-31'\n   and initmode = '11'\n   and purposecode = '14'\n   and txnamount < 500\nGROUP BY txnamount < 500, txnamount < 400, txnamount < 300, txnamount < 200, txnamount < 100",
+      "similarity_score": 0.033,
+      "time_seconds": 36.01
+    },
+    {
+      "query": "UPI rrn wise approved , td , bd qurey",
+      "refined_query": "SELECT",
+      "generated_sql": "SELECT * FROM upi_txn.urcs_ft_txns",
+      "expected_sql": "SELECT custrefno as rrn,\n       currstatusdesc as status,\n       case when upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL') then 'Approved'\n            when upi_masters.upi_new_errorcode_respcd_master.approvedflag = 'TD' then 'Technical Decline'\n            when upi_masters.upi_new_errorcode_respcd_master.approvedflag = 'BD' then 'Business Decline' end as transaction_status\nFROM   upi_txn.urcs_ft_txns join upi_masters.upi_new_errorcode_respcd_master\n        ON urcs_ft_txns.errorcode = upi_new_errorcode_respcd_master.error_code\nWHERE  asdt between '2025-08-19'\n   and '2025-08-19'\nGROUP BY custrefno, currstatusdesc, upi_new_errorcode_respcd_master.approvedflag",
+      "similarity_score": 0.071,
+      "time_seconds": 35.44
+    },
+    {
+      "query": "upi",
+      "refined_query": "SELECT trim(pycode) AS merchant_code,",
+      "generated_sql": "SELECT",
+      "expected_sql": "SELECT txnid,\n       currstatusdesc,\n       asdt\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt = cast(current_date as varchar)\n   and upper(trim(currstatusdesc)) like '%UP%'",
+      "similarity_score": 0.067,
+      "time_seconds": 35.41
+    },
+    {
+      "query": "want to find the total amount transfered by each payyee",
+      "refined_query": "SELECT p.p_code, p.p_name, SUM(prd.amount) AS total_amount",
+      "generated_sql": "SELECT p.p_code, p.p_name,",
+      "expected_sql": "SELECT prdmobile as payee_identifier,\n       count(*) as transaction_volume,\n       cast(sum(txnamount) as double) / 100 as total_transaction_amount\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-04-01'\n   and '2025-05-31'\nGROUP BY prdmobile",
+      "similarity_score": 0.043,
+      "time_seconds": 35.57
+    },
+    {
+      "query": "i want all gtransaction of upi data",
+      "refined_query": "SELECT DISTINCT",
+      "generated_sql": "SELECT upi_txn.urcs_ft_txns.ticker",
+      "expected_sql": "SELECT *\nFROM   upi_txn.urcs_ft_txns_encrypt\nWHERE  asdt between '2025-08-01'\n   and '2025-08-07'",
+      "similarity_score": 0.091,
+      "time_seconds": 35.59
+    },
+    {
+      "query": "Please find transactions in which we have to fetch people who have done more than 5 transactions in a day (P2M). payer side",
+      "refined_query": "SELECT distinct upper(trim(prdmobile)) as mobile_number, upper(trim(pycode)) as merchant_code, count(1) as transaction_count",
+      "generated_sql": "SELECT distinct upper(trim(prdmobile)) as mobile_number, upper(trim(pycode)) as merchant_code, CAST(SUM(txnamount) AS DOUBLE) / 100 as transaction_amount, asdt(transactiondate) as transaction_date",
+      "expected_sql": "SELECT prdmobile as payer_mobile,\n       count(*) as transaction_count\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-08-07'\n   and '2025-08-07'\n   and (not trim(pycode) in ('NULL', '0000', '7407', ''))\nGROUP BY prdmobile having count(*) > 5",
+      "similarity_score": 0.054,
+      "time_seconds": 35.99
+    },
+    {
+      "query": "To calculate the total transaction amount for each customer within a 24-hour running window",
+      "refined_query": "SELECT SUM(transactionamount), customerid",
+      "generated_sql": "SELECT upper(trim(transactiondate)) AS transactiondate, upper(trim(txnstatus)) AS transactionstatus, customerid",
+      "expected_sql": "SELECT prdmobile,\n       cast(sum(txnamount) as double) / 100 as total_transaction_amount\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-08-06'\n   and '2025-08-08'\nGROUP BY prdmobile",
+      "similarity_score": 0.083,
+      "time_seconds": 35.5
+    },
+    {
+      "query": "total number of records in table upi_txn",
+      "refined_query": "SELECT COUNT(*) as total_records",
+      "generated_sql": "SELECT",
+      "expected_sql": "SELECT count(*) as total_records\nFROM   upi_txn.urcs_ft_txns",
+      "similarity_score": 0.167,
+      "time_seconds": 35.43
+    },
+    {
+      "query": "Please find transactions in which we have to fetch people who have done more than 5 transactions in a day (P2M). pls include all columns",
+      "refined_query": "SELECT DISTINCT",
+      "generated_sql": "```sql",
+      "expected_sql": "SELECT *\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt = '2025-08-07'\n   and (not trim(pycode) in ('NULL', '0000', '7407', ''))\n   and (SELECT count(*)\n     FROM   upi_txn.urcs_ft_txns as t\n     WHERE  t.asdt = '2025-08-07'\n        and t.prdmobile = upi_txn.urcs_ft_txns.prdmobile\n        and (not trim(t.pycode) in ('NULL', '0000', '7407', ''))) > 5",
+      "similarity_score": 0.0,
+      "time_seconds": 35.52
+    },
+    {
+      "query": "Please find transactions in which we have to fetch people who have done more than 5 transactions in a day (P2M). Account no side",
+      "refined_query": "```sql",
+      "generated_sql": "SELECT",
+      "expected_sql": "SELECT prdmobile as unique_users,\n       count(*) as transaction_count\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-08-07'\n   and '2025-08-07'\n   and (trim(prcode) in ('NULL', '0000', '')\n   and not trim(pycode) in ('NULL', '0000', '7407', ''))\nGROUP BY prdmobile having count(*) > 5",
+      "similarity_score": 0.037,
+      "time_seconds": 35.54
+    },
+    {
+      "query": "Please find transactions in which we have to fetch people who have done more than 5 transactions in a day (P2M). pls include account number column as well with their bank codes",
+      "refined_query": "SELECT",
+      "generated_sql": "SELECT",
+      "expected_sql": "SELECT prdmobile as payer_mobile,\n       pydmobile as payee_mobile,\n       praccno as payer_account_number,\n       pyaccno as payee_account_number,\n       prnfsparticipantid as payer_bank_code,\n       pynfsparticipantid as payee_bank_code,\n       count(*) as transaction_count\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt = '2025-08-07'\n   and (not trim(pycode) in ('NULL', '0000', '7407', ''))\n   and upper(trim(currstatusdesc)) in ('SUCCESS', 'DEEMED', 'PARTIAL')\nGROUP BY prdmobile, pydmobile, praccno, pyaccno, prnfsparticipantid, pynfsparticipantid having count(*) > 5",
+      "similarity_score": 0.023,
+      "time_seconds": 35.56
+    },
+    {
+      "query": "To calculate the total transaction amount for each customer within a 24-hour window",
+      "refined_query": "SELECT prdmobile, SUM(amount) as total_amount",
+      "generated_sql": "SELECT prdmobile, CAST(SUM(txnamount) AS DOUBLE) / 100 as total_amount, COUNT(*) as transaction_count, upper(trim(column)) as column, asdt as date\nFROM upi_txn.urcs_ft_txns\nGROUP BY prdmobile, upper(trim(column)), asdt;",
+      "expected_sql": "SELECT custrefno,\n       cast(sum(txnamount) as double) / 100 as total_transaction_amount\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-08-06'\n   and '2025-08-08'\nGROUP BY custrefno",
+      "similarity_score": 0.393,
+      "time_seconds": 35.63
+    },
+    {
+      "query": "B3 response code data",
+      "refined_query": "```sql",
+      "generated_sql": "SELECT CASE",
+      "expected_sql": "SELECT cast(txnamount as double) / 100 as transaction_amount,\n       purposecode,\n       pycode,\n       prcode,\n       currstatusdesc,\n       errorcode,\n       finalrespcode,\n       benrespcode,\n       asdt\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-08-01'\n   and '2025-08-07'\n   and upper(trim(finalrespcode)) = 'B3'",
+      "similarity_score": 0.038,
+      "time_seconds": 35.35
+    },
+    {
+      "query": "B3 response code data for Central bank of India",
+      "refined_query": "SELECT prdmobile, pycode, upper(trim(currstatusdesc)) AS currstatusdesc, prdstatus, prdstatusdesc, prdtransactionstatus, prdtransactionstatusdesc, prdtransactiondate, prdamount, prdamounttype, prdremark, prdremarkdesc",
+      "generated_sql": "SELECT prdmobile, pycode, upper(trim(curr",
+      "expected_sql": "SELECT finalrespcode,\n       count(*) as transaction_count\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-08-01'\n   and '2025-08-07'\n   and upper(trim(finalrespcode)) = 'B3' /* B3 response code */\n   and upper(trim(crnfsparticipantid)) = 'CBI' /* Central Bank of India */\nGROUP BY finalrespcode",
+      "similarity_score": 0.03,
+      "time_seconds": 36.1
+    },
+    {
+      "query": "my agg table containes fileds \npayer_account_numberVARCHAR\npayer_ifscVARCHAR\ntotal_amount_transferredDECIMAL\ntypeVARCHAR(empty) and table \njoined255834 has fields\ntxnidVARCHAR\npayer_account_numberVARCHAR\npayer_ifscVARCHAR\npayee_account_numberVARCHAR\npayee_ifscVARCHAR\ntxn_statusVARCHAR\npayer_requested_amountDECIMAL\nbeneficiary_mcc_codeVARCHAR\nremitter_mcc_codeVARCHAR\npayee_addressVARCHAR\nerror_codeVARCHAR\ninitiation_modeVARCHAR\npurposecodeVARCHAR\ntxnnoteVARCHAR\npayer_account_typeVARCHAR\npayee_account_typeVARCHAR\nriskscoreVARCHAR\nasdtVARCHAR\ntxn_idVARCHAR\ncase_type_codeVARCHAR\ntag_type..",
+      "refined_query": "The refined query for your task is as follows:",
+      "generated_sql": "SELECT",
+      "expected_sql": "SELECT pydmobile as payee_identifier,\n       count(*) as transaction_volume,\n       cast(sum(txnamount) as double) / 100 as total_transaction_amount\nFROM   upi_txn.urcs_ft_txns\nWHERE  asdt between '2025-04-01'\n   and '2025-05-31'\nGROUP BY pydmobile",
+      "similarity_score": 0.048,
+      "time_seconds": 37.25
+    }
+  ]
+}
